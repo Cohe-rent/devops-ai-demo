@@ -1,0 +1,32 @@
+name: Deploy Infrastructure
+
+on:
+  workflow_dispatch:
+    inputs:
+      prompt:
+        description: 'Natural language request'
+        required: true
+
+jobs:
+  generate-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install dependencies
+        run: sudo apt-get install -y jq
+
+      - name: Generate Terraform from OpenAI
+        run: |
+          chmod +x scripts/call_openai.sh
+          ./scripts/call_openai.sh "${{ github.event.inputs.prompt }}"
+
+      - name: Init Terraform
+        working-directory: infra/staging
+        run: terraform init
+
+      - name: Apply Terraform
+        working-directory: infra/staging
+        run: terraform apply -auto-approve
