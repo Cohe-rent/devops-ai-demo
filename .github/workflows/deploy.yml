@@ -1,34 +1,43 @@
-name: Deploy Infrastructure
+name: Terraform Deploy
 
 on:
-  workflow_dispatch:
-    inputs:
-      prompt:
-        description: 'Natural language request (e.g., "Deploy a staging PostgreSQL on Azure")'
-        required: true
+  push:
+    paths:
+      - 'infra/**'
+    branches:
+      - main
 
 jobs:
-  generate-and-deploy:
+  terraform:
+    name: Terraform Deploy
     runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: infra/staging
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Install jq (for JSON parsing)
-        run: sudo apt-get install -y jq
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.6.6
 
-      - name: Generate Terraform using OpenAI
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        run: |
-          chmod +x scripts/call_openai.sh
-          ./scripts/call_openai.sh "${{ github.event.inputs.prompt }}"
-
-      - name: Initialize Terraform
-        working-directory: infra/staging
+      - name: Terraform Init
         run: terraform init
 
-      - name: Apply Terraform
-        working-directory: infra/staging
-        run: terraform apply -auto-approve
+      - name: Terraform Validate
+        run: terraform validate
+
+      - name: Terraform Plan
+        run: terraform plan -out=tfplan
+
+      - name: Terraform Apply
+        run: terraform apply -auto-approve tfplan
+        env:
+          ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
+          ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+          ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}

@@ -1,20 +1,10 @@
-# DevOps + AI Demo
+# DevOps AI Terraform Demo
 
-This project lets you describe infrastructure in **natural language**, then it automatically generates Terraform code using **OpenAI**, and deploys it via **GitHub Actions**.
+Generate Terraform code using OpenAI and deploy to Azure using GitHub Actions.
 
----
+## 🔧 Setup
 
-## 🌐 How it works
+1. **Set your OpenAI API key**
 
-1. You input something like:
-   > Deploy a staging PostgreSQL database on Azure
-
-2. GitHub Actions will:
-   - Send the prompt to OpenAI
-   - Generate Terraform code
-   - Apply it using `terraform apply`
-
----
-
-## 📁 Project Structure
-
+```bash
+export OPENAI_API_KEY="your-key-here"
