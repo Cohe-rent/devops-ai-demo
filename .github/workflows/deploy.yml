@@ -1,33 +1,33 @@
-name: Terraform Deploy
+name: Deploy Terraform to Azure
 
 on:
   push:
     branches:
       - main
+    paths:
+      - 'infra/staging/**'
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout code
         uses: actions/checkout@v3
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: 1.7.5
+          terraform_version: 1.8.0  # Optional: Set your version
+
+      - name: List contents for debugging
+        run: ls -R
+        working-directory: infra/staging
 
       - name: Terraform Init
         run: terraform init
+        working-directory: infra/staging
 
       - name: Terraform Plan
         run: terraform plan
-
-      - name: Terraform Apply
-        run: terraform apply -auto-approve
-        env:
-          ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
-          ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
-          ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
-          ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
+        working-directory: infra/staging
