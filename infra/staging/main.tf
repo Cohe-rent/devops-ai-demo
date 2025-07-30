@@ -78,8 +78,5 @@ resource "azurerm_postgresql_flexible_server" "example" {
     azurerm_subnet.pgsql_subnet,
     azurerm_private_dns_zone.pgsql_dns
   ]
-<<<<<<< HEAD
 }
-=======
-}
->>>>>>> 61e28e1 (Add Terraform config for staging)
+
