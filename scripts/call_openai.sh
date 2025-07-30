@@ -1,35 +1,31 @@
 #!/bin/bash
 
-PROMPT="$1"
-OUTPUT_DIR="infra/staging"
-OUTPUT_FILE="$OUTPUT_DIR/main.tf"
+# Load the prompt from file
+prompt=$(cat prompt.txt)
 
-if [ -z "$OPENAI_API_KEY" ]; then
-  echo "❌ Error: OPENAI_API_KEY is not set."
-  exit 1
-fi
+echo "Generating Terraform code for prompt:"
+echo "$prompt"
 
-if [ -z "$PROMPT" ]; then
-  echo "Usage: $0 \"<your terraform prompt here>\""
-  exit 1
-fi
-
-mkdir -p "$OUTPUT_DIR"
-echo "⚙️  Generating Terraform code for prompt: $PROMPT"
-
-RESPONSE=$(curl -s https://api.openai.com/v1/chat/completions \
-  -H "Content-Type: application/json" \
+# Call OpenAI API
+response=$(curl -s https://api.openai.com/v1/chat/completions \
   -H "Authorization: Bearer $OPENAI_API_KEY" \
+  -H "Content-Type: application/json" \
   -d "{
-    \"model\": \"gpt-4o\",
+    \"model\": \"gpt-4\",
     \"messages\": [
-      {\"role\": \"system\", \"content\": \"You are a DevOps assistant that generates Terraform code.\"},
-      {\"role\": \"user\", \"content\": \"${PROMPT}\"}
-    ],
-    \"temperature\": 0.2
-  }")
+      {\"role\": \"system\", \"content\": \"You are a Terraform and Azure expert.\"},
+      {\"role\": \"user\", \"content\": \"$prompt\"}
+    ]
+  }" | jq -r '.choices[0].message.content')
 
-# Write response to file, stripping triple backticks if present
-echo "$RESPONSE" | jq -r '.choices[0].message.content' | sed '/^```/,/^```/d' > "$OUTPUT_FILE"
+# Check for null or empty response
+if [[ "$response" == "null" || -z "$response" ]]; then
+  echo "❌ No response or null returned from OpenAI API."
+  exit 1
+fi
 
-echo "✅ Terraform code written to $OUTPUT_FILE"
+# Save Terraform code
+mkdir -p ../infra/staging
+echo "$response" > ../infra/staging/main.tf
+
+echo "✅ Terraform code written to infra/staging/main.tf"
