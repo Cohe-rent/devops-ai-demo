@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       prompt:
-        description: 'Natural language request'
+        description: 'Natural language request (e.g., "Deploy a staging PostgreSQL on Azure")'
         required: true
 
 jobs:
@@ -15,15 +15,17 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Install dependencies
+      - name: Install jq (for JSON parsing)
         run: sudo apt-get install -y jq
 
-      - name: Generate Terraform from OpenAI
+      - name: Generate Terraform using OpenAI
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
           chmod +x scripts/call_openai.sh
           ./scripts/call_openai.sh "${{ github.event.inputs.prompt }}"
 
-      - name: Init Terraform
+      - name: Initialize Terraform
         working-directory: infra/staging
         run: terraform init
 

@@ -1,20 +1,23 @@
 #!/bin/bash
 
-# Input: natural language instruction
+set -e
+
 PROMPT="$1"
+OUTFILE="infra/staging/main.tf"
 
-# Output Terraform path
-OUTPUT_FILE="infra/staging/main.tf"
+echo "Generating Terraform code for prompt: $PROMPT"
 
-# Call OpenAI (replace YOUR_API_KEY with your OpenAI key)
-curl https://api.openai.com/v1/chat/completions \
-  -s \
-  -H "Authorization: Bearer YOUR_API_KEY" \
+mkdir -p infra/staging
+
+RESPONSE=$(curl -s https://api.openai.com/v1/chat/completions \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $OPENAI_API_KEY" \
   -d '{
     "model": "gpt-4",
     "messages": [{"role": "user", "content": "'"$PROMPT"'"}],
-    "temperature": 0.7
-  }' | jq -r '.choices[0].message.content' > "$OUTPUT_FILE"
+    "temperature": 0.5
+  }')
 
-echo "✅ Terraform code generated at $OUTPUT_FILE"
+echo "$RESPONSE" | jq -r '.choices[0].message.content' > "$OUTFILE"
+
+echo "Terraform code written to $OUTFILE"
