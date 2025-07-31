@@ -1,34 +1,41 @@
 #!/bin/bash
 
-set -e
-
-# Your OpenRouter prompt
 PROMPT="$1"
-OUTPUT_DIR="scripts/infra/staging"
+OUTPUT_DIR="infra/staging"
 OUTPUT_FILE="$OUTPUT_DIR/main.tf"
 
-# Ensure output directory exists
+# Use the exported variable
+API_KEY="$OPENROUTER_API_KEY"
+MODEL="meta-llama/llama-3-8b-instruct"
+
 mkdir -p "$OUTPUT_DIR"
 
 echo "⚙️  Generating Terraform code using OpenRouter..."
 
 RESPONSE=$(curl -s https://openrouter.ai/api/v1/chat/completions \
-  -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+  -H "Authorization: Bearer $API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "openai/gpt-4o",
-    "messages": [{"role": "user", "content": "'"${PROMPT}"'"}],
-    "temperature": 0.3
+    "model": "'"$MODEL"'",
+    "messages": [{"role": "user", "content": "'"$PROMPT"'"}]
   }')
 
-# Extract the code block from the response
-TERRAFORM_CODE=$(echo "$RESPONSE" | jq -r '.choices[0].message.content' | sed -n '/```/,/```/p' | sed '/```/d')
+CONTENT=$(echo "$RESPONSE" | jq -r '.choices[0].message.content // empty')
 
-# Save to output file
-echo "$TERRAFORM_CODE" > "$OUTPUT_FILE"
+TF_CODE=$(echo "$CONTENT" | awk '/```hcl/{flag=1; next} /```/{flag=0} flag')
 
-echo "✅ Terraform code saved to $OUTPUT_FILE"
+if [[ -z "$TF_CODE" ]]; then
+  TF_CODE=$(echo "$CONTENT" | awk '/```/{flag=1; next} /```/{flag=0} flag')
+fi
 
+if [[ -n "$TF_CODE" ]]; then
+  echo "$TF_CODE" > "$OUTPUT_FILE"
+  echo "✅ Terraform code saved to $OUTPUT_FILE"
+else
+  echo "❌ Failed to extract Terraform code."
+  echo "🔍 Raw response:"
+  echo "$RESPONSE"
+fi
 # Git operations
 echo "📦 Pushing changes to GitHub..."
 
