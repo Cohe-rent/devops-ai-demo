@@ -1,0 +1,4 @@
+infra/staging/main.tf
+echo "# Ignore Terraform state files" > .gitignore
+echo "*.tfstate" >> .gitignore
+echo "*.tfstate.backup" >> .gitignore
