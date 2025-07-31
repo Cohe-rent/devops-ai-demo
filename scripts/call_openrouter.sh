@@ -50,7 +50,7 @@ if git diff --cached --quiet; then
   echo "ℹ️  No changes to commit."
 else
   git commit -m "AI Update: Generated Terraform code and updated script"
-  git pull --rebase origin main
+  git pull origin main
   git push origin main
   echo "✅ Git push successful."
 fi
