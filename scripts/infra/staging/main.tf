@@ -1,81 +1,119 @@
 terraform {
-  required_version = ">= 1.1.0"
-
-  # Configure Azure Provider
-  provider "azurerm" {
-    version = "~> 3.90.0"
-
-    subscription_id = "5bed777a-a101-4228-b580-9fae5d0c1b81"
-    client_id      = "4bf06616-9484-427d-a952-e2deb150d24f"
-    client_secret  = "tOs8Q~u_LUrRxXqNTvzQdz9JzXp.obFOIyHZXcK5"
-    tenant_id      = "bb2b0df2-4c1a-4c20-9bea-e81535bf1fe5"
-  }
-}
-
-# Create a resource group
-resource "azurerm_resource_group" "example-rg" {
-  name     = "example-rg"
-  location = "Southeast Asia"
-}
-
-# Create a virtual network
-resource "azurerm_virtual_network" "example-vnet" {
-  name                = "example-vnet"
-  location            = azurerm_resource_group.example-rg.location
-  resource_group_name = azurerm_resource_group.example-rg.name
-  address_space       = ["10.0.0.0/16"]
-}
-
-# Create a subnet
-resource "azurerm_subnet" "pgsql-subnet" {
-  name                 = "pgsql-subnet"
-  resource_group_name = azurerm_resource_group.example-rg.name
-  virtual_network_name = azurerm_virtual_network.example-vnet.name
-  address_prefixes     = ["10.0.1.0/24"]
-  delegation {
-    name = "pgsql-subnet-delegation"
-
-    service_delegation {
-      name = "Microsoft.DBforPostgreSQL/flexibleServers"
+  required_providers {
+    azurerm = {
+      source  = "hashicorp/azurerm"
+      version = ">= 3.90.0"
     }
   }
 }
 
-# Create a private DNS zone
-resource "azurerm_private_dns_zone" "privatelink-postgres" {
-  name                = "privatelink.postgres.database.azure.com"
-  resource_group_name = azurerm_resource_group.example-rg.name
+provider "azurerm" {
+  subscription_id = "5bed777a-a101-4228-b580-9fae5d0c1b81"
+  client_id      = "4bf06616-9484-427d-a952-e2deb150d24f"
+  client_secret = "tOs8Q~u_LUrRxXqNTvzQdz9JzXp.obFOIyHZXcK5"
+  tenant_id     = "bb2b0df2-4c1a-4c20-9bea-e81535bf1fe5"
 }
 
-# Create a DNS zone virtual network link
-resource "azurerm_private_dns_zone_virtual_network_link" "privatelink-postgres-link" {
-  name                  = "privatelink-postgres-link"
-  resource_group_name = azurerm_resource_group.example-rg.name
-  private_dns_zone_name = azurerm_private_dns_zone.privatelink-postgres.name
-  virtual_network_link {
-    virtual_network_name = azurerm_virtual_network.example-vnet.name
+resource "azurerm_resource_group" "example" {
+  name     = "example-rg"
+  location = "Southeast Asia"
+}
+
+resource "azurerm_virtual_network" "example" {
+  name                = "example-vnet"
+  resource_group_name = azurerm_resource_group.example.name
+  location            = azurerm_resource_group.example.location
+  address_space       = ["10.0.0.0/16"]
+}
+
+resource "azurerm_subnet" "pgsql" {
+  name                 = "pgsql-subnet"
+  resource_group_name = azurerm_resource_group.example.name
+  virtual_network_name = azurerm_virtual_network.example.name
+  address_prefixes     = ["10.0.1.0/24"]
+  address_space = "10.0.1.0/24"
+  route_table = null
+
+  delegation {
+    name = "postgresql resized"
+
+    service_delegation {
+      name    = "Microsoft.DBforPostgreSQL/flexibleServers"
+      actions = ["Microsoft.Network/virtualNetworks/subnets/join/action"]
+    }
   }
 }
 
-# Create a PostgreSQL Flexible Server
-resource "azurerm_postgresql_flexible_server" "example-pgsql" {
-  name                = "example-pgsql"
-  resource_group_name = azurerm_resource_group.example-rg.name
-  location            = azurerm_resource_group.example-rg.location
-  administrator_login = "psqladmin"
-  administrator_password = "Coherentpixels"
-  zone               = 1
-  sku_name          = "GP_Standard_D4ds_v4"
-  storage_size      = 128
+resource "azurerm_private_dns_zone" "example" {
+  name                = "privatelink.postgres.database.azure.com"
+  resource_group_name = azurerm_resource_group.example.name
+}
+
+resource "azurerm_private_dns_zone_virtual_network_link" "example" {
+  name                  = "example-vnet-link"
+  resource_group_name = azurerm_resource_group.example.name
+  private_dns_zone_name = azurerm_private_dns_zone.example.name
+  virtual_network_group_name = azurerm_virtual_network.example.id
+}
+
+resource "azurerm_windows_virtual_machine_scale_set" "example" {
+  name                 = "example-pgsql"
+  resource_group_name = azurerm_resource_group.example.name
+  location            = azurerm_resource_group.example.location
+  sku                  = "GP_Standard_D4ds_v4"
+  virtual_network_subnet_id = azurerm_subnet.pgsql.id
+
+  os_disk {
+    caching              = "ReadWrite"
+    storage_account_type = "Standard_LRS"
+  }
+
+  os_profile {
+    computer_name_prefix     = "example-pgsql"
+    admin_username           = "psqladmin"
+    admin_password          = "Coherentpixels"
+  }
+
+  os_profile_windows_config {
+    provision_vm_agent = true
+    timezone          = "GMT Standard Time"
+    winRM {
+      protocol                = "http"
+      certificate {
+        thumbprint           = ""
+        certificate_store = "My"
+      }
+    }
+  }
+
+  source_image_reference {
+    publisher = "MicrosoftSQLServer"
+    offer     = "MicrosoftSQLServer2019Ent"
+    sku       = "SQL2019-STD-E"
+    version   = "latest"
+  }
+
+  network_interfaceconfigs = [
+    {
+      name = "nbfg"
+    }
+  ]
+
+  admin_username          = "psqladmin"
+  admin_password          = "Coherentpixels"
+  resource_type          = "FlexServers"
+
+  storage_profile {
+    os_disk {
+      storage_account_type = "Standard_LRS"
+      caching             = "ReadWrite"
+      disk_size_gb       = 128
+    }
+  }
 
   high_availability {
-    mode = "SameZone"
+    zone             = 1
+    redundant_IO   = "Enabled"
   }
-
-  subnet_id = azurerm_subnet.pgsql-subnet.id
-
-  private_dns_zone_id = azurerm_private_dns_zone.privatelink-postgres.id
-
-  delegated_subnet_network_resource_placement = "azurerm_subnet.pgsql-subnet"
 }
-Please note that you should replace the placeholders with your actual values.
+Note that the actual virtual machine scale set should be changed to PostgreSQL using the `sql_server` block.
