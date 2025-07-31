@@ -4,7 +4,6 @@ PROMPT="$1"
 OUTPUT_DIR="infra/staging"
 OUTPUT_FILE="$OUTPUT_DIR/main.tf"
 
-# Use the exported variable
 API_KEY="$OPENROUTER_API_KEY"
 MODEL="meta-llama/llama-3-8b-instruct"
 
@@ -22,35 +21,38 @@ RESPONSE=$(curl -s https://openrouter.ai/api/v1/chat/completions \
 
 CONTENT=$(echo "$RESPONSE" | jq -r '.choices[0].message.content // empty')
 
-TF_CODE=$(echo "$CONTENT" | awk '/```hcl/{flag=1; next} /```/{flag=0} flag')
+# Try to extract inside ``` blocks if they exist
+TF_CODE=$(echo "$CONTENT" | awk '/^```/{flag=!flag; next} flag')
 
+# If no fenced code block found, fall back to full content
 if [[ -z "$TF_CODE" ]]; then
-  TF_CODE=$(echo "$CONTENT" | awk '/```/{flag=1; next} /```/{flag=0} flag')
+  TF_CODE="$CONTENT"
 fi
 
-if [[ -n "$TF_CODE" ]]; then
-  echo "$TF_CODE" > "$OUTPUT_FILE"
-  echo "✅ Terraform code saved to $OUTPUT_FILE"
-else
+# Final fallback if everything failed
+if [[ -z "$TF_CODE" ]]; then
   echo "❌ Failed to extract Terraform code."
   echo "🔍 Raw response:"
   echo "$RESPONSE"
+  exit 1
 fi
+
+# Save to file
+echo "$TF_CODE" > "$OUTPUT_FILE"
+echo "✅ Terraform code saved to $OUTPUT_FILE"
+
 # Git operations
 echo "📦 Pushing changes to GitHub..."
 
-# Move to project root (assumes script is in scripts/)
 cd "$(git rev-parse --show-toplevel)"
 
-# Add only the relevant files
 git add .
 
-# Check if there's anything to commit
 if git diff --cached --quiet; then
   echo "ℹ️  No changes to commit."
 else
-  git commit -m "AI"
-  git pull origin main
+  git commit -m "Update: regenerate main.tf via AI"
+  git pull origin main --rebase
   git push origin main
   echo "✅ Git push successful."
 fi
