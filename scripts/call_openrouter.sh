@@ -1,17 +1,13 @@
 #!/bin/bash
 
-# Corrected call_openrouter.sh - Uses exported API key and creates Terraform using OpenRouter AI
+set -e
 
+# Your OpenRouter prompt
 PROMPT="$1"
 OUTPUT_DIR="scripts/infra/staging"
 OUTPUT_FILE="$OUTPUT_DIR/main.tf"
 
-# Check if API key is set
-if [[ -z "$OPENROUTER_API_KEY" ]]; then
-  echo "❌ OPENROUTER_API_KEY environment variable is not set."
-  exit 1
-fi
-
+# Ensure output directory exists
 mkdir -p "$OUTPUT_DIR"
 
 echo "⚙️  Generating Terraform code using OpenRouter..."
@@ -20,24 +16,34 @@ RESPONSE=$(curl -s https://openrouter.ai/api/v1/chat/completions \
   -H "Authorization: Bearer $OPENROUTER_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "mistralai/mixtral-8x7b",
-    "messages": [{"role": "user", "content": "'"$PROMPT"'"}],
-    "temperature": 0.4
+    "model": "openai/gpt-4o",
+    "messages": [{"role": "user", "content": "'"${PROMPT}"'"}],
+    "temperature": 0.3
   }')
 
-# Parse and save response
-CODE=$(echo "$RESPONSE" | jq -r '.choices[0].message.content')
+# Extract the code block from the response
+TERRAFORM_CODE=$(echo "$RESPONSE" | jq -r '.choices[0].message.content' | sed -n '/```/,/```/p' | sed '/```/d')
 
-if [[ -z "$CODE" || "$CODE" == "null" ]]; then
-  echo "❌ Failed to extract code from OpenRouter response"
-  exit 1
-fi
+# Save to output file
+echo "$TERRAFORM_CODE" > "$OUTPUT_FILE"
 
-echo "$CODE" > "$OUTPUT_FILE"
 echo "✅ Terraform code saved to $OUTPUT_FILE"
 
-# Git push
+# Git operations
 echo "📦 Pushing changes to GitHub..."
-git add "$OUTPUT_FILE" scripts/call_openrouter.sh
-git commit -m "Auto: Update main.tf and script"
-git push origin main
+
+# Move to project root (assumes script is in scripts/)
+cd "$(git rev-parse --show-toplevel)"
+
+# Add only the relevant files
+git add "$OUTPUT_FILE" "scripts/call_openrouter.sh"
+
+# Check if there's anything to commit
+if git diff --cached --quiet; then
+  echo "ℹ️  No changes to commit."
+else
+  git commit -m "AI Update: Generated Terraform code and updated script"
+  git pull --rebase origin main
+  git push origin main
+  echo "✅ Git push successful."
+fi
