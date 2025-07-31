@@ -8,4 +8,7 @@ Generate a complete Terraform configuration using the azurerm provider (version 
    - tenant_id: bb2b0df2-4c1a-4c20-9bea-e81535bf1fe5
    - features {}
 
-3. Create a resource group named 'ai-rg' in the Southeast Asia region.    i need to prompt not show outside
+3. Create a resource group named 'ai-rg' in the Southeast Asia region.    
+
+
+Return only valid Terraform HCL code. No explanation. No markdown. No comments.
