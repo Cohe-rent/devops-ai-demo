@@ -1,7 +1,11 @@
 Generate a complete Terraform configuration using the azurerm provider (version ~> 3.90.0) with the following:
 
-1. Use a terraform block with required_providers for azurerm.
-2. Configure the azurerm provider using variables: subscription_id, client_id, client_secret, tenant_id (use var.<name> format).
-3. Create a resource group named 'ai-rg' in the Southeast Asia region.
+1. Use a terraform block with required_providers to specify azurerm version ~> 3.90.0.
+2. Configure the azurerm provider with:
+   - subscription_id: 5bed777a-a101-4228-b580-9fae5d0c1b81
+   - client_id: 4bf06616-9484-427d-a952-e2deb150d24f
+   - client_secret: tOs8Q~u_LUrRxXqNTvzQdz9JzXp.obFOIyHZXcK5
+   - tenant_id: bb2b0df2-4c1a-4c20-9bea-e81535bf1fe5
+   - features {}
 
-Return only valid Terraform HCL code. No explanation. No markdown. No comments.
+3. Create a resource group named 'ai-rg' in the Southeast Asia region.    i need to prompt not show outside
