@@ -1,55 +1,33 @@
-name: Deploy Terraform to Azure
+name: Terraform Deployment
 
 on:
   push:
     branches:
       - main
     paths:
-      - 'infra/staging/**'
+      - 'scripts/infra/staging/main.tf'
 
 jobs:
-  deploy:
+  terraform:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
+    - name: Checkout Repository
+      uses: actions/checkout@v3
 
-      - name: Set up Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: 1.8.0
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v2
+      with:
+        terraform_version: 1.6.6
 
-      - name: Log in to Azure
-        uses: azure/login@v1
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
+    - name: Terraform Init
+      run: terraform init
+      working-directory: scripts/infra/staging
 
-      - name: Run AI code generator
-        run: ./scripts/call_openrouter.sh "Generate Terraform code for an Azure Resource Group"
-        shell: bash
+    - name: Terraform Plan
+      run: terraform plan
+      working-directory: scripts/infra/staging
 
-      - name: Show generated main.tf
-        run: cat infra/staging/main.tf
-
-      - name: Commit and push generated main.tf
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add infra/staging/main.tf
-          git commit -m "🤖 AI-generated main.tf via GitHub Actions" || echo "No changes to commit"
-          git push
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Terraform Init
-        run: terraform init
-        working-directory: infra/staging
-
-      - name: Terraform Plan
-        run: terraform plan
-        working-directory: infra/staging
-
-      - name: Terraform Apply
-        run: terraform apply -auto-approve
-        working-directory: infra/staging
+    - name: Terraform Apply
+      run: terraform apply -auto-approve
+      working-directory: scripts/infra/staging
