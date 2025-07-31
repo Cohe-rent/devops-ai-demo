@@ -43,7 +43,7 @@ echo "📦 Pushing changes to GitHub..."
 cd "$(git rev-parse --show-toplevel)"
 
 # Add only the relevant files
-git add "$OUTPUT_FILE" "scripts/call_openrouter.sh"
+git add .
 
 # Check if there's anything to commit
 if git diff --cached --quiet; then
