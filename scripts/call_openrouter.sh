@@ -49,7 +49,7 @@ git add "$OUTPUT_FILE" "scripts/call_openrouter.sh"
 if git diff --cached --quiet; then
   echo "ℹ️  No changes to commit."
 else
-  git commit -m "AI Update: Generated Terraform code and updated script"
+  git commit -m "AI"
   git pull origin main
   git push origin main
   echo "✅ Git push successful."
