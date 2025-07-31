@@ -1,0 +1,7 @@
+Generate a complete Terraform configuration using the azurerm provider (version ~> 3.90.0) with the following:
+
+1. Use a terraform block with required_providers for azurerm.
+2. Configure the azurerm provider using variables: subscription_id, client_id, client_secret, tenant_id (use var.<name> format).
+3. Create a resource group named 'ai-rg' in the Southeast Asia region.
+
+Return only valid Terraform HCL code. No explanation. No markdown. No comments.
