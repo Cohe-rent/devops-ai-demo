@@ -9,27 +9,36 @@ terraform {
 
 provider "docker" {}
 
-resource "docker_network" "app_network" {
+resource "docker_network" "app-network" {
   name = "app-network"
 }
 
 resource "docker_container" "nginx" {
   name  = "nginx"
   image = "nginx:latest"
-  network  = docker_network.app_network.name
-  ports = [
-    "80:8180"
-  ]
+  ports {
+    internal  = 80
+    external  = 8180
+  }
+  depends_on = [docker_network.app-network.id]
+  networks_advanced {
+    name = docker_network.app-network.name
+  }
 }
 
 resource "docker_container" "flask_app" {
-  name  = "flask-app"
+  name  = "flask_app"
   image = "tiangolo/uwsgi-nginx-flask:python3.8"
-  network  = docker_network.app_network.name
-  volumes = [
-    "./app:/app"
-  ]
-  ports = [
-    "5000:8100"
-  ]
+  ports {
+    internal = 5000
+    external = 8100
+  }
+  volumes {
+    host_path      = "./app"
+    container_path = "/app"
+  }
+  depends_on = [docker_network.app-network.id]
+  networks_advanced {
+    name = docker_network.app-network.name
+  }
 }

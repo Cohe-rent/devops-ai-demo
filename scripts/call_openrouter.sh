@@ -55,7 +55,7 @@ git add .
 if git diff --cached --quiet; then
   echo "ℹ️  No changes to commit."
 else
-  git commit -m "Update: regenerate main.tf via AI"
+  git commit -m "AK"
   git pull origin main --rebase
   git push origin main
   echo "✅ Git push successful."
