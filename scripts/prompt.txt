@@ -1,38 +1,59 @@
 Generate a valid Terraform configuration using the kreuzwerker/docker provider. The configuration should:
 
-    Initialize the Docker provider using:
+    Initialize the docker provider using:
 
-    terraform {
-      required_providers {
-        docker = {
-          source  = "kreuzwerker/docker"
-          version = "~> 3.0.2"
-        }
-      }
+terraform {
+  required_providers {
+    docker = {
+      source  = "kreuzwerker/docker"
+      version = "~> 3.0.2"
+    }
+  }
+}
+
+Create a Docker network named app-network.
+
+Define a Docker container named nginx that:
+
+    Uses the nginx:latest image
+
+    Connects to the app-network
+
+    Maps container port 80 to host port 8180
+
+    Uses the correct ports block structure:
+
+ports {
+  internal = 80
+  external = 8180
+}
+
+Attaches to the network using the correct networks_advanced block:
+
+    networks_advanced {
+      name = docker_network.app_network.name
     }
 
-    Create a Docker network named "app-network".
+    Uses the correct depends_on syntax (reference the full network resource).
 
-    Define a Docker container named "nginx" that:
+Define a Docker container named flask_app that:
 
-        Uses the "nginx:latest" image
+    Uses the tiangolo/uwsgi-nginx-flask:python3.8 image
 
-        Connects to the "app-network" using networks_advanced block with the correct name argument
+    Mounts the host folder ${path.module}/app into /app in the container using:
 
-        Exposes container port 80 and maps it to host port 8180 using proper ports block (not a list)
+volumes {
+  host_path      = "${path.module}/app"
+  container_path = "/app"
+}
 
-        Uses correct depends_on syntax referencing the full Docker network resource
+Maps port 5000 to host port 8100 using:
 
-    Define a Docker container named "flask_app" that:
+ports {
+  internal = 5000
+  external = 8100
+}
 
-        Uses the "tiangolo/uwsgi-nginx-flask:python3.8" image
+Attaches to the app-network using the correct networks_advanced block
 
-        Mounts the host folder ${path.module}/app to /app in the container using a mounts block
-
-        Connects to the "app-network" using networks_advanced block with the correct name argument
-
-        Maps container port 5000 to host port 8100 using a ports block
-
-        Uses correct depends_on syntax (no .id, and no target)
-
-⚠️ All blocks like ports, networks_advanced, and mounts must use the correct structure, not unsupported arguments or lists. Avoid target or .id. Use only valid Terraform Docker provider syntax.
+Includes the proper depends_on syntax

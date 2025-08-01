@@ -7,37 +7,48 @@ terraform {
   }
 }
 
+# Create a Docker network named app-network
 resource "docker_network" "app_network" {
   name = "app-network"
 }
 
+# Define a Docker container named nginx
 resource "docker_container" "nginx" {
   name  = "nginx"
+
   image = "nginx:latest"
+
+  ports {
+    internal = 80
+    external = 8180
+  }
+
   networks_advanced {
     name = docker_network.app_network.name
   }
-  ports {
-    container_port = 80
-    host_port      = 8180
-  }
+
   depends_on = [docker_network.app_network]
 }
 
+# Define a Docker container named flask_app
 resource "docker_container" "flask_app" {
   name  = "flask_app"
+
   image = "tiangolo/uwsgi-nginx-flask:python3.8"
-  mounts {
-    target = "/app"
-    source  = "${path.module}/app"
-    type    = "volume"
+
+  volumes {
+    host_path      = path.module
+    container_path = "/app"
   }
+
+  ports {
+    internal = 5000
+    external = 8100
+  }
+
   networks_advanced {
     name = docker_network.app_network.name
   }
-  ports {
-    container_port = 5000
-    host_port      = 8100
-  }
-  depends_on = [docker_network.app_network, docker_container.nginx]
+
+  depends_on = [docker_network.app_network]
 }
