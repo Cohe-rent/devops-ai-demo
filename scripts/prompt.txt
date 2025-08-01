@@ -1,17 +1,31 @@
-Generate valid Terraform code using the `kreuzwerker/docker` provider for local Docker setup.
+Generate a valid Terraform configuration using the kreuzwerker/docker provider. The configuration should:
 
-Requirements:
-- Use `terraform` block with required provider `kreuzwerker/docker`, version "~> 3.0.2"
-- Use `provider "docker"` with no configuration (for local use)
-- Create a Docker network named "app-network"
-- Create a Docker container named "nginx":
-  - Image: "nginx:latest"
-  - Connect it to the "app-network" using `networks_advanced` block
-  - Use a `ports` block to expose container port 80 to host port 8180
-- Create a Docker container named "flask_app":
-  - Image: "tiangolo/uwsgi-nginx-flask:python3.8"
-  - Mount local folder `./app` to `/app` using a `volumes` block
-  - Connect it to the "app-network" using `networks_advanced` block
-  - Use a `ports` block to expose container port 5000 to host port 8100
+1. Initialize the docker provider using:
+   terraform {
+     required_providers {
+       docker = {
+         source  = "kreuzwerker/docker"
+         version = "~> 3.0.2"
+       }
+     }
+   }
 
-Only output valid Terraform code. Use the correct block structures (`ports`, `volumes`, `networks_advanced`). Do not output explanations.
+2. Create a Docker network named "app-network".
+
+3. Define a Docker container named "nginx" that:
+   - Uses the "nginx:latest" image
+   - Connects to the "app-network"
+   - Maps container port 80 to host port 8180
+   - Uses correct block structure for network attachment and ports
+   - Uses correct `depends_on` referencing the full network resource object
+
+4. Define a Docker container named "flask_app" that:
+   - Uses the "tiangolo/uwsgi-nginx-flask:python3.8" image
+   - Mounts the host folder `${path.module}/app` into `/app` in the container
+   - Connects to the "app-network"
+   - Maps container port 5000 to host port 8100
+   - Uses proper `volumes` and `ports` block structure
+   - Uses correct `depends_on` syntax
+
+All references must use proper syntax (e.g., no `.id` in `depends_on`) and use absolute paths (not './app') for volume mounts.
+
