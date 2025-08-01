@@ -8,39 +8,47 @@ terraform {
 }
 
 provider "docker" {
-  // credentials for your Docker Hub registry if necessary
+  host = "unix:///var/run/docker.sock"
 }
 
-resource "docker_network" "app_network" {
+resource "docker_network" "app-network" {
   name = "app-network"
 }
 
 resource "docker_container" "nginx" {
   name  = "nginx"
   image = "nginx:latest"
-  network {
-    name = docker_network.app_network.name
+  networks_advanced {
+    target = docker_network.app-network.name
   }
-  ports {
-    internal = 80
-    external = 8180
-  }
-  depends_on = [docker_network.app_network]
+  ports = [
+    {
+      container_port = 80
+      host_port      = 8180
+    }
+  ]
+  depends_on = [docker_network.app-network]
 }
 
 resource "docker_container" "flask_app" {
   name  = "flask_app"
   image = "tiangolo/uwsgi-nginx-flask:python3.8"
-  volumes {
-    host_path  = path.module("path/to/app")
-    container_path = "/app"
+  mounts = [
+    {
+      type        = "bind"
+      source      = "${path.module}/app"
+      target      = "/app"
+      read_only   = false
+    }
+  ]
+  networks_advanced {
+    target = docker_network.app-network.name
   }
-  network {
-    name = docker_network.app_network.name
-  }
-  ports {
-    internal = 5000
-    external = 8100
-  }
-  depends_on = [docker_network.app_network, docker_container.nginx]
+  ports = [
+    {
+      container_port = 5000
+      host_port      = 8100
+    }
+  ]
+  depends_on = [docker_network.app-network]
 }
