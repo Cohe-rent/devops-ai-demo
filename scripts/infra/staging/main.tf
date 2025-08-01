@@ -1,48 +1,52 @@
-# Configure the Docker provider
-required_providers {
-  docker = {
-    source = "kreuzwerker/docker"
-    version = "~> 3.0.2"
+terraform {
+  required_providers {
+    docker = {
+      source  = "kreuzwerker/docker"
+      version = "~> 3.0.2"
+    }
   }
 }
 
-# Create a Docker network
-resource "docker_network" "app_network" {
-  name = "app-network"
-  driver = "bridge"
+provider "docker" {
+  // Add credentials if not using Docker CLI
+  // credentials_file = "/path/to/credentials.json"
 }
 
-# Create an Nginx container
+# Create a Docker network named app-network
+resource "docker_network" "app_network" {
+  name = "app-network"
+}
+
+# Create a Docker container named nginx
 resource "docker_container" "nginx" {
   name  = "nginx"
   image = "nginx:latest"
-  restart = "always"
-  ports {
-    internal  = 80
-    external  = 8180
-  }
   networks_advanced {
     name    = docker_network.app_network.name
-    alias   = "nginx"
+    aliases = ["nginx"]
   }
+  ports {
+    internal = 80
+    external = 8180
+  }
+  depends_on = [docker_network.app_network]
 }
 
-# Create a Flask app container
+# Create a Docker container named flask_app
 resource "docker_container" "flask_app" {
-  name  = "flask-app"
+  name  = "flask_app"
   image = "tiangolo/uwsgi-nginx-flask:python3.8"
-  restart = "always"
+  volumes {
+    host_path      = "${abspath(path.module)}/app"
+    container_path = "/app"
+  }
   ports {
     internal = 5000
     external = 8100
   }
-  volumes {
-    type = "bind"
-    source      = "${abspath(path.module)}/app"
-    target      = "/app"
-  }
   networks_advanced {
     name    = docker_network.app_network.name
-    alias   = "flask-app"
+    aliases = ["flask_app"]
   }
+  depends_on = [docker_network.app_network, docker_container.nginx]
 }
