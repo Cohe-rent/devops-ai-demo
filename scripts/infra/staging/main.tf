@@ -8,31 +8,26 @@ terraform {
 }
 
 provider "docker" {
-  // Add credentials if not using Docker CLI
-  // credentials_file = "/path/to/credentials.json"
+  registry_token = "your-repository-token" # optional
 }
 
-# Create a Docker network named app-network
 resource "docker_network" "app_network" {
-  name = "app-network"
+  name     = "app-network"
 }
 
-# Create a Docker container named nginx
 resource "docker_container" "nginx" {
   name  = "nginx"
   image = "nginx:latest"
-  networks_advanced {
-    name    = docker_network.app_network.name
-    aliases = ["nginx"]
-  }
   ports {
     internal = 80
     external = 8180
   }
+  networks_advanced {
+    name = docker_network.app_network.name
+  }
   depends_on = [docker_network.app_network]
 }
 
-# Create a Docker container named flask_app
 resource "docker_container" "flask_app" {
   name  = "flask_app"
   image = "tiangolo/uwsgi-nginx-flask:python3.8"
@@ -45,8 +40,7 @@ resource "docker_container" "flask_app" {
     external = 8100
   }
   networks_advanced {
-    name    = docker_network.app_network.name
-    aliases = ["flask_app"]
+    name = docker_network.app_network.name
   }
-  depends_on = [docker_network.app_network, docker_container.nginx]
+  depends_on = [docker_container.nginx, docker_network.app_network]
 }
