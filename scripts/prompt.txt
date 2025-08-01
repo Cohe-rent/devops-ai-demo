@@ -1,45 +1,9 @@
-Generate a complete Terraform main.tf file using the kreuzwerker/docker provider. The configuration must:
-
-    Use provider docker (compatible with local Docker engine).
-
-    Create a Docker network named app-network.
-
-    Create two Docker containers:
-
-a. Nginx container:
-
-    Name: nginx
-
-    Image: nginx:latest
-
-    Connect to app-network
-
-    Expose port 80 in the container and map it to port 8180 on the host
-
-b. Flask app container:
-
-    Name: flask_app
-
-    Image: tiangolo/uwsgi-nginx-flask:python3.8
-
-    Connect to app-network
-
-    Expose port 5000 in the container and map it to port 8100 on the host
-
-    Mount a volume from the host machine's path ${abspath(path.module)}/app to /app inside the container
-
-    Use only correct arguments supported by docker_container, like:
-
-    name
-
-    image
-
-    ports block with internal and external keys
-
-    volumes block with host_path and container_path
-
-    networks_advanced block with name and aliases
-
-Ensure that all volume paths are absolute using ${abspath(path.module)}.
-
-The Terraform code must be syntactically valid and ready to run with terraform init, plan, and apply.
+Generate a valid Terraform configuration (`main.tf`) using the `kreuzwerker/docker` provider (version ~> 3.0.2). The configuration must:
+- Use the `docker` provider and correctly declare `required_providers`.
+- Create a Docker network named `app-network`.
+- Run two containers:
+  - An Nginx container using the image `nginx:latest`, mapping container port 80 to host port 8180, and connecting it to the `app-network`.
+  - A Flask app container using the image `tiangolo/uwsgi-nginx-flask:python3.8`, mapping container port 5000 to host port 8100, mounting the local folder `${abspath(path.module)}/app` to `/app` inside the container, and also connecting to `app-network`.
+- Use the correct `volumes`, `ports`, and `networks_advanced` blocks.
+- Ensure that volume mount paths are **absolute paths** using `abspath(path.module)`.
+- Make sure the entire configuration is valid and will not fail on `terraform init`, `terraform plan`, or `terraform apply`.
