@@ -1,64 +1,75 @@
-# Configure the Docker provider
+terraform {
+  required_providers {
+    docker = {
+      source  = "kreuzwerker/docker"
+      version = "~> 3.0.2"
+    }
+  }
+}
+
 provider "docker" {
   host = "unix:///var/run/docker.sock"
 }
 
-# Define the Docker network
 resource "docker_network" "app_network" {
-  name = "app-network"
+  name     = "app-network"
+  driver   = "bridge"
 }
 
-# Define the Flask image
-resource "docker_image" "flask" {
-  name         = "flask:latest"
-  keep_locally = false
-}
-
-# Define the Flask container
-resource "docker_container" "flask" {
-  name  = "flask"
-  image = docker_image.flask.name
-  depends_on = [docker_container.nginx]
+resource "docker_container" "flask_app" {
+  name  = "flask-app"
+  image = "tiangolo/uwsgi-nginx-flask:python3.8"
+  restart = "always"
   ports {
     internal = 5000
     external = 8100
   }
-  env = ["FLASK_APP=app.py"]
-  volumes = [
-    "${path.module}/scripts/app" => "/app"
-  ]
+  volumes {
+    host_path      = "${abspath(path.module)}/scripts/app"
+    container_path = "/app"
+  }
+  networks_advanced {
+    name = docker_network.app_network.name
+  }
+  depends_on = [docker_network.app_network]
 }
 
-# Define the NGINX image
-resource "docker_image" "nginx" {
-  name         = "nginx:latest"
-  keep_locally = false
-}
-
-# Define the NGINX container
-resource "docker_container" "nginx" {
-  name  = "nginx"
-  image = docker_image.nginx.name
-  depends_on = [docker_container.flask]
+resource "docker_container" "nginx_proxy" {
+  name  = "nginx-proxy"
+  image = "nginx:latest"
+  restart = "always"
   ports {
     internal = 80
     external = 8180
   }
-  volumes = [
-    "${path.module}/scripts/nginx" => "/etc/nginx/conf.d"
-  ]
+  volumes {
+    host_path      = "${abspath(path.module)}/scripts/nginx/default.conf"
+    container_path = "/etc/nginx/conf.d/default.conf"
+  }
+  networks_advanced {
+    name = docker_network.app_network.name
+  }
+  depends_on = [docker_network.app_network, docker_container.flask_app]
 }
 
-# Define the Docker network and attach containers
-resource "docker_network_attach" "attach" {
-  container = docker_container.flask.name
-  network = docker_network.app_network.name
+output "flask_app_url" {
+  value = "http://localhost:8100"
 }
 
-resource "docker_network_attach" "attach_nginx" {
-  container = docker_container.nginx.name
-  network = docker_network.app_network.name
+output "nginx_proxy_url" {
+  value = "http://localhost:8180"
 }
+FROM tiangolo/uwsgi-nginx-flask:python3.8
+
+WORKDIR /app
+
+COPY app.py /app/
+COPY requirements.txt /app/
+
+RUN pip install -r requirements.txt
+
+EXPOSE 5000
+CMD ["uwsgi", "--http", ":5000", "--wsgi-file", "app.py"]
 from flask import Flask
 
 app = Flask(__name__)
@@ -69,40 +80,28 @@ def hello():
 
 if __name__ == "__main__":
     app.run(debug=True)
-Flask==2.0.2
-FROM python:3.9-slim
-
-WORKDIR /app
-
-COPY requirements.txt.
-
-RUN pip install -r requirements.txt
-
-COPY app.py /app/
-
-CMD ["python", "app.py"]
+flask
 http {
-    upstream flask {
-        server localhost:5000;
+    upstream flask_app {
+        server flask_app:5000;
     }
 
     server {
         listen 80;
         location / {
-            proxy_pass http://flask;
+            proxy_pass http://flask_app;
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
         }
     }
 }
-FROM nginx:latest
-
-COPY default.conf /etc/nginx/conf.d/
-
-CMD ["nginx", "-g", "daemon off;"]
-docker build -t flask-app -f scripts/app/Dockerfile scripts/app
-docker run -p 8100:5000 flask-app
-docker build -t nginx-reverse-proxy -f scripts/nginx/Dockerfile scripts/nginx
-docker run -p 8180:80 nginx-reverse-proxy
-docker run -d -p 8100:5000 flask-app
-docker run -d -p 8180:80 nginx-reverse-proxy
+devops-ai-demo/
++-- main.tf
++-- Dockerfile-flask
++-- scripts/
+    +-- app/
+        +-- app.py
+        +-- requirements.txt
+    +-- nginx/
+        +-- default.conf
+        +-- Dockerfile (optional)

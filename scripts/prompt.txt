@@ -1,21 +1,64 @@
-Generate a complete DevOps project that uses Terraform to provision and run:
+Generate a complete DevOps project that deploys a Python Flask backend and an NGINX frontend reverse proxy using Docker and Terraform.
 
-1. A Docker network called app-network.
-2. A Flask-based Python backend exposed on port 5000 (internally), mapped to port 8100 (externally).
-3. An NGINX reverse proxy container that listens on port 80 (internally), mapped to 8180 (externally), and forwards traffic to the Flask backend.
-4. Use Terraform to define Docker resources:
-   - Docker provider configuration.
-   - Docker network resource.
-   - Docker images for Flask and NGINX.
-   - Docker containers for Flask and NGINX.
-   - Mount Flask app source from scripts/app/ directory into the container.
+### Requirements:
 
-Include the following:
-- main.tf with all Terraform resources.
-- scripts/app/app.py with a simple Hello from Flask backend! endpoint.
-- scripts/app/requirements.txt with required Python libraries.
-- scripts/app/Dockerfile for building the Flask image.
-- scripts/nginx/default.conf for NGINX reverse proxy config to forward to Flask.
-- scripts/nginx/Dockerfile to build the NGINX image with the custom config.
+1. Use the `kreuzwerker/docker` provider in Terraform:
+```hcl
+terraform {
+  required_providers {
+    docker = {
+      source  = "kreuzwerker/docker"
+      version = "~> 3.0.2"
+    }
+  }
+}
 
-Also provide manual Docker build and run commands as an optional test path for local testing outside of Terraform.
+    Create a Docker network named app-network.
+
+    Flask Application Container:
+
+        Uses the tiangolo/uwsgi-nginx-flask:python3.8 base image.
+
+        Mount host folder ${path.module}/scripts/app into /app inside container:
+
+        volumes {
+          host_path      = "${abspath(path.module)}/scripts/app"
+          container_path = "/app"
+        }
+
+        Maps internal port 5000 to external port 8100.
+
+        Uses networks_advanced to attach to app-network.
+
+        Includes depends_on = [docker_network.app_network].
+
+    NGINX Reverse Proxy Container:
+
+        Uses nginx:latest image.
+
+        Mount custom NGINX config from ${path.module}/scripts/nginx/default.conf to /etc/nginx/conf.d/default.conf.
+
+        Maps internal port 80 to external port 8180.
+
+        Uses networks_advanced and depends_on = [docker_network.app_network].
+
+    File structure:
+
+devops-ai-demo/
+├── main.tf                   # Terraform script
+├── Dockerfile-flask          # Optional Dockerfile for Flask app
+├── scripts/
+│   ├── app/
+│   │   ├── app.py
+│   │   └── requirements.txt
+│   └── nginx/
+│       ├── default.conf
+│       └── Dockerfile        # Custom NGINX build (if needed)
+
+    Flask app: app.py should respond with:
+
+@app.route("/")
+def hello():
+    return "✅ Hello from Flask!"
+
+    NGINX config (default.conf) should reverse proxy / to Flask app on flask_app:5000.
