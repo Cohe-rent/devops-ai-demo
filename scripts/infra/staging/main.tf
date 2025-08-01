@@ -1,7 +1,7 @@
 terraform {
   required_providers {
     docker = {
-      source = "kreuzwerker/docker"
+      source  = "kreuzwerker/docker"
       version = "~> 3.0.2"
     }
   }
@@ -16,18 +16,20 @@ resource "docker_network" "app_network" {
 resource "docker_container" "nginx" {
   name  = "nginx"
   image = "nginx:latest"
-  network = docker_network.app_network.name
-  ports = ["8180:80"]
+  network  = docker_network.app_network.name
+  ports = [
+    "80:8180"
+  ]
 }
 
-resource "docker_container" "flask" {
-  name  = "flask"
+resource "docker_container" "flask_app" {
+  name  = "flask-app"
   image = "tiangolo/uwsgi-nginx-flask:python3.8"
-  network = docker_network.app_network.name
+  network  = docker_network.app_network.name
   volumes = [
     "./app:/app"
   ]
-  ports = ["8100:5000"]
+  ports = [
+    "5000:8100"
+  ]
 }
-terraform init
-terraform apply
