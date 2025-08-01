@@ -1,9 +1,10 @@
-Generate Terraform code to create a simple local development environment on my machine:
-- Use `nginx` as the frontend server (e.g., running on port 8080)
-- Use a `Python` backend server (e.g., Flask, running on port 5000)
-- No cloud resources, only local setup
-- Use the `local` backend in Terraform
-- Use the `null_resource` and `local_file` or `external` providers if needed
-- Avoid cloud providers like AWS, Azure, or Google
-- Do not use non-existent or third-party providers like cloudnativedocker/pador
-- Output valid Terraform code that passes `terraform init` and `terraform plan`
+Generate a valid Terraform configuration that runs locally using the Docker provider. The setup should include:
+
+- A frontend container running NGINX and exposing port 80
+- A backend container running a Python Flask app and exposing port 5000
+- Both containers should be defined using the Docker provider
+- Use a Docker bridge network so both containers can communicate
+- The Terraform configuration must use a correct `terraform {}` block with required providers
+- No cloud providers (Azure, AWS, GCP) should be used
+- Backend storage should not be defined or should use `local` backend inside the `terraform` block
+- The code should be fully working and `terraform init` and `terraform apply` should succeed without errors

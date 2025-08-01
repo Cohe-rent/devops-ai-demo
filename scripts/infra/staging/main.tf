@@ -1,63 +1,47 @@
-# Configure the local backend
-backend "local" {
-  path = "/Users/<your_username>/tf-local-dev/env.tfstate"
+# Configure the Docker provider
+provider "docker" {
+  host = "unix:///var/run/docker.sock"
 }
 
-# Create a directory for the frontend server
-resource "local_file" "frontend_dir" {
-  content = <<EOF
-mkdir frontend
-cd frontend &&
-echo "This is the frontend directory" > index.html
-EOF
-  directory_path = "/Users/<your_username>/tf-local-dev/frontend"
+# Define a Docker bridge network
+resource "docker_network" "my_network" {
+  name = "my_network"
+  driver = "bridge"
 }
 
-# Create a directory for the backend server
-resource "local_file" "backend_dir" {
-  content = <<EOF
-mkdir backend
-cd backend &&
-python -m venv venv &&
-echo "This is the backend directory" > app.py
-EOF
-  directory_path = "/Users/<your_username>/tf-local-dev/backend"
-}
-
-# Install nginx
-resource "null_resource" "install_nginx" {
-  provisioner "local-exec" {
-    command = "sudo apt-get update && sudo apt-get install -y nginx"
-  }
-}
-
-# Configure nginx
-resource "local_file" "nginx_config" {
-  content = <<EOF
-server {
-    listen 8080;
-    server_name localhost;
-
-    location / {
-        root /Users/<your_username>/tf-local-dev/frontend;
-        index index.html;
+# Define the frontend container
+resource "docker_container" "frontend" {
+  name  = "frontend"
+  image = "nginx:latest"
+  networks_advanced = [
+    {
+      attachment_type = "bridge"
+      name           = docker_network.my_network.name
     }
-}
-EOF
-  directory_path = "/etc/nginx/sites-available"
-  filename = "default.conf"
-}
-
-# Configure Flask backend server
-resource "null_resource" "install_flask" {
-  provisioner "local-exec" {
-    command = "python -m venv venv && venv/bin/pip install flask"
-  }
+  ]
+  ports = [
+    {
+      container_port = 80
+      host_port      = 80
+    }
+  ]
 }
 
-# Start the Flask backend server
-resource "null_resource" "start_flask" {
-  provisioner "local-exec" {
-    command = "venv/bin/python app.py"
-  }
+# Define the backend container
+resource "docker_container" "backend" {
+  name  = "backend"
+  image = "python:3.9-slim-buster"
+  command = ["python", "-m", "flask", "run", "--host=0.0.0.0"]
+  networks_advanced = [
+    {
+      attachment_type = "bridge"
+      name           = docker_network.my_network.name
+    }
+  ]
+  ports = [
+    {
+      container_port = 5000
+      host_port      = 5000
+    }
+  ]
 }
