@@ -1,14 +1,10 @@
-Generate a complete Terraform configuration using the azurerm provider (version ~> 3.90.0) with the following:
+Generate a complete Terraform configuration to deploy a simple local environment using Docker. The setup should include:
 
-1. Use a terraform block with required_providers to specify azurerm version ~> 3.90.0.
-2. Configure the azurerm provider with:
-   - subscription_id: 5bed777a-a101-4228-b580-9fae5d0c1b81
-   - client_id: 4bf06616-9484-427d-a952-e2deb150d24f
-   - client_secret: tOs8Q~u_LUrRxXqNTvzQdz9JzXp.obFOIyHZXcK5
-   - tenant_id: bb2b0df2-4c1a-4c20-9bea-e81535bf1fe5
-   - features {}
+1. An Nginx container to serve as the frontend.
+2. A Python (Flask) backend container.
+3. Use `terraform` with `docker` provider.
+4. Nginx should reverse proxy to the Python app running on port 5000.
+5. Set up a `docker_network` so both containers can communicate.
+6. Expose Nginx on localhost:8080.
 
-3. Create a resource group named 'ai-rg' in the Southeast Asia region.    
-
-
-Return only valid Terraform HCL code. No explanation. No markdown. No comments.
+Only return the complete Terraform code inside a code block.
