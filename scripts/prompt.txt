@@ -1,10 +1,9 @@
-Generate a complete Terraform configuration to deploy a simple local environment using Docker. The setup should include:
-
-1. An Nginx container to serve as the frontend.
-2. A Python (Flask) backend container.
-3. Use `terraform` with `docker` provider.
-4. Nginx should reverse proxy to the Python app running on port 5000.
-5. Set up a `docker_network` so both containers can communicate.
-6. Expose Nginx on localhost:8080.
-
-Only return the complete Terraform code inside a code block.
+Generate Terraform code to create a simple local development environment on my machine:
+- Use `nginx` as the frontend server (e.g., running on port 8080)
+- Use a `Python` backend server (e.g., Flask, running on port 5000)
+- No cloud resources, only local setup
+- Use the `local` backend in Terraform
+- Use the `null_resource` and `local_file` or `external` providers if needed
+- Avoid cloud providers like AWS, Azure, or Google
+- Do not use non-existent or third-party providers like cloudnativedocker/pador
+- Output valid Terraform code that passes `terraform init` and `terraform plan`
