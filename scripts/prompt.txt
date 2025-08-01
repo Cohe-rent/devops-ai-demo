@@ -1,41 +1,44 @@
 Generate a complete Terraform configuration using the kreuzwerker/docker provider to deploy a Flask backend and an Nginx frontend reverse proxy using Docker containers.
 
 The configuration should include:
-
 📦 Provider Block:
-- `terraform` block with required provider:
-  - docker = {
+
+terraform {
+  required_providers {
+    docker = {
       source  = "kreuzwerker/docker"
       version = "~> 3.0.2"
     }
-- Basic `provider "docker"` block without arguments.
+  }
+}
+
+provider "docker" {}
 
 🧠 Docker Network:
-- Create a Docker network named `app-network` using `docker_network`.
 
-🐍 Flask Container (Backend):
-- Use the image `tiangolo/uwsgi-nginx-flask:python3.8`.
-- Set the container name to `flask_app`.
-- Mount a volume from host path `${path.module}/scripts/app` to container path `/app` using the `volumes` block.
-- Expose container port `5000` and map it to host port `8100` using the `ports` block with correct `internal` and `external` values.
-- Connect the container to the Docker network `app-network` using `networks_advanced`.
-- Use `depends_on` to ensure the Flask container starts only after the Docker network is created.
+    Create a Docker network named app-network.
 
-🌐 Nginx Container (Frontend):
-- Use the image `nginx:latest`.
-- Set the container name to `nginx_proxy`.
-- Mount a volume from host path `${path.module}/scripts/nginx` to container path `/etc/nginx/conf.d/` using the `volumes` block.
-- Map container port `80` to host port `80`.
-- Attach the container to the same Docker network `app-network` using `networks_advanced`.
-- Use `depends_on` to ensure the Nginx container starts only after both the Flask container and the Docker network are created.
+resource "docker_network" "app_network" {
+  name = "app-network"
+}
 
-✅ Notes:
-- Use `resource "docker_container"` for both containers.
-- Use `resource "docker_network"` for the network.
-- Each container should have proper `name`, `image`, `ports`, `volumes`, and `networks_advanced` blocks.
-- Make sure all file paths are dynamic using `${path.module}` or `${abspath(path.module)}`.
-- Ensure `depends_on` uses full resource references (e.g., `docker_network.app_network`).
-- Final output should be a valid and runnable Terraform configuration with no syntax errors.
+🐍 Flask Container:
 
-Also include:
-- A comment section above each resource explaining what it does (like `# Docker network for app communication`, etc.)
+    Use image tiangolo/uwsgi-nginx-flask:python3.8
+
+    Mount host folder ${path.module}/scripts/app to /app in the container:
+
+volumes {
+  host_path      = "${abspath(path.module)}/scripts/app"
+  container_path = "/app"
+}
+
+    Map container port 5000 to host port 8100
+
+    Attach to the app-network using:
+
+networks_advanced {
+  name = docker_network.app_network.name
+}
+
+    Use correct depends_on syntax referencing the full network resource.
