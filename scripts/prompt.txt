@@ -1,6 +1,6 @@
 Generate a valid Terraform configuration using the kreuzwerker/docker provider. The configuration should:
 
-    Initialize the docker provider using:
+    Initialize the Docker provider using:
 
     terraform {
       required_providers {
@@ -17,30 +17,22 @@ Generate a valid Terraform configuration using the kreuzwerker/docker provider. 
 
         Uses the "nginx:latest" image
 
-        Connects to the "app-network"
+        Connects to the "app-network" using networks_advanced block with the correct name argument
 
-        Maps container port 80 to host port 8180
+        Exposes container port 80 and maps it to host port 8180 using proper ports block (not a list)
 
-        Uses the correct ports block structure
-
-        Uses the correct networks_advanced block to attach to the network
-
-        Uses depends_on referencing the full docker_network.app-network resource (not .id)
+        Uses correct depends_on syntax referencing the full Docker network resource
 
     Define a Docker container named "flask_app" that:
 
         Uses the "tiangolo/uwsgi-nginx-flask:python3.8" image
 
-        Mounts the host folder ${path.module}/app into /app in the container
+        Mounts the host folder ${path.module}/app to /app in the container using a mounts block
 
-        Connects to the "app-network"
+        Connects to the "app-network" using networks_advanced block with the correct name argument
 
-        Maps container port 5000 to host port 8100
+        Maps container port 5000 to host port 8100 using a ports block
 
-        Uses the correct mounts block for the volume mount (not volumes)
+        Uses correct depends_on syntax (no .id, and no target)
 
-        Uses the correct ports and networks_advanced block structures
-
-        Uses depends_on referencing the full docker_network.app-network resource (not .id)
-
-All references must use correct Terraform HCL syntax, avoid .id in depends_on, and ensure absolute paths (e.g., ${path.module}/app) are used for mounting the local directory.
+⚠️ All blocks like ports, networks_advanced, and mounts must use the correct structure, not unsupported arguments or lists. Avoid target or .id. Use only valid Terraform Docker provider syntax.
