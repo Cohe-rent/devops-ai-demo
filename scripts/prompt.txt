@@ -10,8 +10,7 @@ terraform {
     }
   }
 }
-
-Create a Docker network named app-network.
+Create a Docker network named app-network
 
 Define a Docker container named nginx that:
 
@@ -58,3 +57,57 @@ ports {
 Attaches to the app-network using the correct networks_advanced block
 
 Includes the proper depends_on syntax
+
+🔹 Flask Backend (scripts/app/)
+
+    A simple Python Flask app (app.py) that returns “✅ Hello from Flask backend!” at the root / endpoint.
+
+    requirements.txt should only contain flask.
+
+    Dockerfile should:
+
+        Use python:3.11-slim base image.
+
+        Set the working directory to /app.
+
+        Copy all files.
+
+        Install dependencies using pip.
+
+        Expose port 5000.
+
+        Run python app.py.
+
+🔹 NGINX Frontend Reverse Proxy (scripts/nginx/)
+
+    default.conf should:
+
+        Listen on port 80.
+
+        Forward all requests to http://flask-backend:5000.
+
+        Set Host and X-Real-IP headers.
+
+    Dockerfile should:
+
+        Use nginx:alpine base image.
+
+        Copy default.conf to /etc/nginx/conf.d/default.conf.
+
+🔹 Docker Build & Run Commands
+
+From the scripts/ directory:
+
+    Create Docker network app-network:
+
+docker network create app-network
+
+Build images:
+
+docker build -t flask-backend ./app
+docker build -t flask-nginx ./nginx
+
+Run containers:
+
+docker run -d --name flask-backend --network app-network flask-backend
+docker run -d --name flask-nginx --network app-network -p 8180:80 flask-nginx
