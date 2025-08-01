@@ -1,58 +1,104 @@
-Generate a valid Terraform configuration using the `kreuzwerker/docker` provider.
+🔧 Generate a complete and valid Terraform configuration using the kreuzwerker/docker provider to provision this Docker-based setup:
 
-Requirements:
+1. Terraform Requirements:
 
-1. Provider configuration:
-   - Use this block:
-     ```
-     terraform {
-       required_providers {
-         docker = {
-           source  = "kreuzwerker/docker"
-           version = "~> 3.0.2"
-         }
-       }
-     }
-     ```
+terraform {
+  required_providers {
+    docker = {
+      source  = "kreuzwerker/docker"
+      version = "~> 3.0.2"
+    }
+  }
+}
 
-2. Create a Docker network resource:
-   - Name it: `app-network`.
+2. Docker Network Resource:
 
-3. Define a Docker container named `nginx`:
-   - Image: `nginx:latest`
-   - Connect it to `app-network`
-   - Map container port 80 to host port 8180 using:
-     ```
-     ports {
-       internal = 80
-       external = 8180
-     }
-     ```
-   - Attach the container to the network using:
-     ```
-     networks_advanced {
-       name = docker_network.app_network.name
-     }
-     ```
-   - Add a correct `depends_on` block referencing the Docker network resource.
+resource "docker_network" "app_network" {
+  name = "app-network"
+}
 
-4. Define a Docker container named `flask_app`:
-   - Image: `tiangolo/uwsgi-nginx-flask:python3.8`
-   - Mount host directory `${path.module}/app` to `/app` in container using:
-     ```
-     volumes {
-  host_path      = "${abspath(path.module)}/app"
-  container_path = "/app"
-     }
-     ```
-   - Map container port 5000 to host port 8100 using:
-     ```
-     ports {
-       internal = 5000
-       external = 8100
-     }
-     ```
-   - Attach the container to the `app-network` using the same `networks_advanced` block format.
-   - Include correct `depends_on`.
+3. Docker Container: NGINX (Reverse Proxy):
 
-Ensure all HCL syntax is valid and the configuration is ready to run with `terraform init` and `terraform apply`.
+- Image: nginx:latest or flask-nginx (prebuilt)
+- Connect to app-network
+- Map host port 8180 → container port 80
+- Attach to network using:
+  networks_advanced {
+    name = docker_network.app_network.name
+  }
+- Add depends_on for docker_network.app_network
+
+4. Docker Container: Flask App:
+
+- Image: tiangolo/uwsgi-nginx-flask:python3.8 or flask-backend (prebuilt)
+- Mount volume from ${path.module}/app to /app inside the container:
+  volumes {
+    host_path      = "${abspath(path.module)}/app"
+    container_path = "/app"
+  }
+- Map host port 8100 → container port 5000
+- Attach to app-network using networks_advanced
+- Add depends_on for docker_network.app_network
+
+💡 Also include the full manual setup instructions needed to build the local Flask and NGINX images before applying Terraform:
+
+🧱 Manual Build Steps (Shell commands):
+
+📁 Step 1: Create directory structure
+mkdir -p devops-ai-demo/scripts/app
+
+🐍 Step 2: Create Flask app
+cat <<EOF > app.py
+from flask import Flask
+app = Flask(__name__)
+@app.route("/")
+def hello():
+    return "✅ Hello from Flask!"
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000)
+EOF
+
+📦 Step 3: requirements.txt
+echo "flask" > requirements.txt
+
+🐳 Step 4: Dockerfile for Flask
+cat <<EOF > Dockerfile
+FROM python:3.11-slim
+WORKDIR /app
+COPY . .
+RUN pip install --no-cache-dir -r requirements.txt
+EXPOSE 5000
+CMD ["python", "app.py"]
+EOF
+
+🔨 Step 5: Build Flask Docker image
+docker build -t flask-backend ./app
+
+🧩 Step 6: NGINX Setup
+mkdir nginx
+cd nginx
+
+📝 Step 7: NGINX config
+cat <<EOF > default.conf
+server {
+    listen 80;
+    location / {
+        proxy_pass http://host.docker.internal:8100;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+    }
+}
+EOF
+
+🐳 Step 8: Dockerfile for NGINX
+cat <<EOF > Dockerfile
+FROM nginx:alpine
+COPY default.conf /etc/nginx/conf.d/default.conf
+EOF
+
+🔨 Step 9: Build NGINX Docker image
+docker build -t flask-nginx .
+
+🎯 Final Output:
+- Terraform file (main.tf) with both containers and the network
+- Uses the `flask-backend` and `flask-nginx` images built locally
