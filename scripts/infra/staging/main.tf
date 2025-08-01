@@ -7,29 +7,19 @@ terraform {
   }
 }
 
-provider "docker" {
-  host = "unix:///var/run/docker.sock"
-  timeout = "10m"
-}
-
 resource "docker_network" "app_network" {
-  name    = "app-network"
-  driver   = "bridge"
-  ipam_options {
-    driver   = "default"
-    config   = ["172.17.0.1/16"]
-  }
+  name = "app-network"
 }
 
 resource "docker_container" "nginx" {
   name  = "nginx"
   image = "nginx:latest"
+  networks_advanced {
+    name = docker_network.app_network.name
+  }
   ports {
     internal = 80
     external = 8180
-  }
-  networks_advanced {
-    name = docker_network.app_network.name
   }
   depends_on = [docker_network.app_network]
 }
@@ -48,5 +38,8 @@ resource "docker_container" "flask_app" {
   networks_advanced {
     name = docker_network.app_network.name
   }
-  depends_on = [docker_network.app_network, docker_container.nginx]
+  depends_on = [docker_network.app_network]
 }
+
+output "nginx PORT" { value = docker_container.nginx.ports }
+output "flask_app PORT" { value = docker_container.flask_app.ports }
