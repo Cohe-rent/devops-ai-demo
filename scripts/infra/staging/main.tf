@@ -1,96 +1,108 @@
-provider "docker" {}
+# Configure the Docker provider
+provider "docker" {
+  host = "unix:///var/run/docker.sock"
+}
 
-# Define a single Docker network resource
+# Define the Docker network
 resource "docker_network" "app_network" {
   name = "app-network"
 }
 
-# Create a container for Flask app
+# Define the Flask image
+resource "docker_image" "flask" {
+  name         = "flask:latest"
+  keep_locally = false
+}
+
+# Define the Flask container
 resource "docker_container" "flask" {
-  name  = "flask-app"
-  image = "flask-app"
-  port {
+  name  = "flask"
+  image = docker_image.flask.name
+  depends_on = [docker_container.nginx]
+  ports {
     internal = 5000
     external = 8100
   }
-  depends_on = [docker_image.flask]
-  volumes {
-    container_path = "/app"
-    host_path      = "${path.module}/scripts/app"
-    read_only      = false
-  }
+  env = ["FLASK_APP=app.py"]
+  volumes = [
+    "${path.module}/scripts/app" => "/app"
+  ]
 }
 
-# Create a container for NGINX
+# Define the NGINX image
+resource "docker_image" "nginx" {
+  name         = "nginx:latest"
+  keep_locally = false
+}
+
+# Define the NGINX container
 resource "docker_container" "nginx" {
   name  = "nginx"
-  image = "nginx"
-  port {
+  image = docker_image.nginx.name
+  depends_on = [docker_container.flask]
+  ports {
     internal = 80
     external = 8180
   }
-  depends_on = [docker_image.nginx]
-  networks_advanced {
-    name = docker_network.app_network.name
-  }
+  volumes = [
+    "${path.module}/scripts/nginx" => "/etc/nginx/conf.d"
+  ]
 }
 
-# Build the Flask image
-resource "docker_image" "flask" {
-  name = "flask-app"
-  build {
-    context = path.module
-    dockerfile = "${path.module}/scripts/app/Dockerfile"
-  }
+# Define the Docker network and attach containers
+resource "docker_network_attach" "attach" {
+  container = docker_container.flask.name
+  network = docker_network.app_network.name
 }
 
-# Build the NGINX image
-resource "docker_image" "nginx" {
-  name = "nginx"
-  build {
-    context = path.module
-    dockerfile = "${path.module}/scripts/nginx/Dockerfile"
-    build_args = {
-      VIRTUAL_HOST = "localhost:8180"
-    }
-  }
+resource "docker_network_attach" "attach_nginx" {
+  container = docker_container.nginx.name
+  network = docker_network.app_network.name
 }
 from flask import Flask
 
 app = Flask(__name__)
 
-@app.route('/hello', methods=['GET'])
+@app.route("/")
 def hello():
-    return 'Hello from Flask backend!'
+    return "Hello from Flask!"
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=5000)
-flask
+    app.run(debug=True)
+Flask==2.0.2
 FROM python:3.9-slim
 
 WORKDIR /app
 
-COPY requirements.txt .
+COPY requirements.txt.
 
 RUN pip install -r requirements.txt
 
-COPY . .
+COPY app.py /app/
 
 CMD ["python", "app.py"]
-server {
-    listen 80;
-    server_name localhost:8180;
+http {
+    upstream flask {
+        server localhost:5000;
+    }
 
-    location / {
-        proxy_pass http://flask-app:5000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
+    server {
+        listen 80;
+        location / {
+            proxy_pass http://flask;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+        }
     }
 }
 FROM nginx:latest
 
-COPY default.conf /etc/nginx/conf.d/default.conf
-
-WORKDIR /etc/nginx
+COPY default.conf /etc/nginx/conf.d/
 
 CMD ["nginx", "-g", "daemon off;"]
+docker build -t flask-app -f scripts/app/Dockerfile scripts/app
+docker run -p 8100:5000 flask-app
+docker build -t nginx-reverse-proxy -f scripts/nginx/Dockerfile scripts/nginx
+docker run -p 8180:80 nginx-reverse-proxy
+docker run -d -p 8100:5000 flask-app
+docker run -d -p 8180:80 nginx-reverse-proxy
