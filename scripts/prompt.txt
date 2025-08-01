@@ -41,8 +41,8 @@ Requirements:
    - Mount host directory `${path.module}/app` to `/app` in container using:
      ```
      volumes {
-       host_path      = "${abspath(path.module)}/app"
-       container_path = "/app"
+  host_path      = "${abspath(path.module)}/app"
+  container_path = "/app"
      }
      ```
    - Map container port 5000 to host port 8100 using:
