@@ -1,59 +1,45 @@
-Generate a valid Terraform configuration using the kreuzwerker/docker provider. The configuration should:
+Generate a complete Terraform main.tf file using the kreuzwerker/docker provider. The configuration must:
 
-    Initialize the docker provider using:
+    Use provider docker (compatible with local Docker engine).
 
-terraform {
-  required_providers {
-    docker = {
-      source  = "kreuzwerker/docker"
-      version = "~> 3.0.2"
-    }
-  }
-}
+    Create a Docker network named app-network.
 
-Create a Docker network named app-network.
+    Create two Docker containers:
 
-Define a Docker container named nginx that:
+a. Nginx container:
 
-    Uses the nginx:latest image
+    Name: nginx
 
-    Connects to the app-network
+    Image: nginx:latest
 
-    Maps container port 80 to host port 8180
+    Connect to app-network
 
-    Uses the correct ports block structure:
+    Expose port 80 in the container and map it to port 8180 on the host
 
-ports {
-  internal = 80
-  external = 8180
-}
+b. Flask app container:
 
-Attaches to the network using the correct networks_advanced block:
+    Name: flask_app
 
-    networks_advanced {
-      name = docker_network.app_network.name
-    }
+    Image: tiangolo/uwsgi-nginx-flask:python3.8
 
-    Uses the correct depends_on syntax (reference the full network resource).
+    Connect to app-network
 
-Define a Docker container named flask_app that:
+    Expose port 5000 in the container and map it to port 8100 on the host
 
-    Uses the tiangolo/uwsgi-nginx-flask:python3.8 image
+    Mount a volume from the host machine's path ${abspath(path.module)}/app to /app inside the container
 
-    Mounts the host folder ${path.module}/app into /app in the container using:
+    Use only correct arguments supported by docker_container, like:
 
-volumes {
-  host_path      = "${path.module}/app"
-  container_path = "/app"
-}
+    name
 
-Maps port 5000 to host port 8100 using:
+    image
 
-ports {
-  internal = 5000
-  external = 8100
-}
+    ports block with internal and external keys
 
-Attaches to the app-network using the correct networks_advanced block
+    volumes block with host_path and container_path
 
-Includes the proper depends_on syntax
+    networks_advanced block with name and aliases
+
+Ensure that all volume paths are absolute using ${abspath(path.module)}.
+
+The Terraform code must be syntactically valid and ready to run with terraform init, plan, and apply.
