@@ -1,21 +1,53 @@
-Generate a complete DevOps project that uses Terraform to provision and run:
+Generate a complete DevOps project using Terraform to provision and run the following Docker-based setup:
 
-1. A Docker network called `app-network`.
-2. A Flask-based Python backend exposed on port 5000 (internally), mapped to port 8100 (externally).
-3. An NGINX reverse proxy container that listens on port 80 (internally), mapped to 8180 (externally), and forwards traffic to the Flask backend.
-4. Use Terraform to define Docker resources:
-   - Docker provider configuration.
-   - Docker network resource.
-   - Docker images for Flask and NGINX.
-   - Docker containers for Flask and NGINX.
-   - Mount Flask app source from `scripts/app/` directory into the container.
+    A Docker network named app-network.
 
-Include the following:
-- `main.tf` with all Terraform resources.
-- `scripts/app/app.py` with a simple `Hello from Flask backend!` endpoint.
-- `scripts/app/requirements.txt` with required Python libraries.
-- `scripts/app/Dockerfile` for building the Flask image.
-- `scripts/nginx/default.conf` for NGINX reverse proxy config to forward to Flask.
-- `scripts/nginx/Dockerfile` to build the NGINX image with the custom config.
+    A Flask-based Python backend app:
 
-Also provide manual Docker build and run commands as an optional test path for local testing outside of Terraform.
+        Runs on port 5000 inside the container.
+
+        Exposed on port 8100 on the host.
+
+        Mount the Flask app source from scripts/app/ directory into the container.
+
+    An NGINX reverse proxy container:
+
+        Listens on port 80 inside the container.
+
+        Exposed on port 8180 on the host.
+
+        Forwards traffic to the Flask backend.
+
+Terraform details:
+
+    Use the Docker provider.
+
+    Define a single Docker network resource (docker_network.app_network) — avoid duplicates.
+
+    Build Docker images for Flask and NGINX using correct context syntax:
+    ✅ context = "${path.module}/scripts/app" (not path.module("./scripts/app", "")).
+
+    Use a single depends_on list per resource to handle dependencies properly.
+
+Deliver the following project structure:
+
+    main.tf: Terraform code with:
+
+        Docker provider
+
+        Docker network
+
+        Docker images and containers (Flask + NGINX)
+
+    scripts/app/app.py: Flask app with "✅ Hello from Flask backend!" endpoint.
+
+    scripts/app/requirements.txt: Python dependencies.
+
+    scripts/app/Dockerfile: Builds the Flask image.
+
+    scripts/nginx/default.conf: NGINX config to proxy requests to Flask.
+
+    scripts/nginx/Dockerfile: Builds the NGINX image using default.conf.
+
+Bonus:
+Also include manual Docker build and run commands as an optional local test path (outside Terraform).
