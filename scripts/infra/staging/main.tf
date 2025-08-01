@@ -7,17 +7,21 @@ terraform {
   }
 }
 
-provider "docker" {
-  registry_token = "your-repository-token" # optional
+resource "docker_image" "nginx" {
+  name = "nginx:latest"
+}
+
+resource "docker_image" "flask_app" {
+  name = "tiangolo/uwsgi-nginx-flask:python3.8"
 }
 
 resource "docker_network" "app_network" {
-  name     = "app-network"
+  name = "app-network"
 }
 
 resource "docker_container" "nginx" {
-  name  = "nginx"
-  image = "nginx:latest"
+  name    = "nginx"
+  image   = docker_image.nginx.name
   ports {
     internal = 80
     external = 8180
@@ -29,10 +33,10 @@ resource "docker_container" "nginx" {
 }
 
 resource "docker_container" "flask_app" {
-  name  = "flask_app"
-  image = "tiangolo/uwsgi-nginx-flask:python3.8"
+  name    = "flask-app"
+  image   = docker_image.flask_app.name
   volumes {
-    host_path      = "${abspath(path.module)}/app"
+    host_path      = "${path.module}/app"
     container_path = "/app"
   }
   ports {
@@ -42,5 +46,5 @@ resource "docker_container" "flask_app" {
   networks_advanced {
     name = docker_network.app_network.name
   }
-  depends_on = [docker_container.nginx, docker_network.app_network]
+  depends_on = [docker_network.app_network]
 }
