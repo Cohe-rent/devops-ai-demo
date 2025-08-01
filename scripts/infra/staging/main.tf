@@ -1,5 +1,16 @@
+terraform {
+  required_providers {
+    docker = {
+      source  = "kreuzwerker/docker"
+      version = "~> 3.0.2"
+    }
+  }
+}
+
 provider "docker" {
-  host = "unix:///var/run/docker.sock"
+  registration {
+    address = "127.0.0.1:2375"
+  }
 }
 
 resource "docker_network" "app_network" {
@@ -7,31 +18,38 @@ resource "docker_network" "app_network" {
 }
 
 resource "docker_container" "nginx" {
-  name  = "nginx"
+  name = "nginx"
   image = "nginx:latest"
+  networks_advanced {
+    name   = docker_network.app_network.name
+  }
   ports {
     internal = 80
     external = 8180
   }
-  networks_advanced {
-    name = docker_network.app_network.name
-  }
-  depends_on = [docker_network.app_network]
 }
 
 resource "docker_container" "flask_app" {
   name  = "flask_app"
   image = "tiangolo/uwsgi-nginx-flask:python3.8"
+
   volumes {
     host_path      = "${abspath(path.module)}/app"
     container_path = "/app"
   }
+
   ports {
     internal = 5000
     external = 8100
   }
+
   networks_advanced {
-    name = docker_network.app_network.name
+    name   = docker_network.app_network.name
   }
-  depends_on = [docker_network.app_network]
+
+  depends_on = [docker_network.app_network, docker_container.nginx]
+}
+
+output "flask_app_container_ip" {
+  value = docker_container.flask_app.ip_address
 }

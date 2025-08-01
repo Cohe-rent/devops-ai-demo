@@ -1,39 +1,60 @@
-Generate a valid Terraform configuration in HCL format using the kreuzwerker/docker provider (version ~> 3.0.2). The configuration should:
+Generate a valid Terraform configuration using the kreuzwerker/docker provider. The configuration should:
 
-1. Configure the Docker provider:
-   - Use host = "unix:///var/run/docker.sock"
+    Initialize the docker provider using:
 
-2. Create a Docker network named "app-network".
+terraform {
+  required_providers {
+    docker = {
+      source  = "kreuzwerker/docker"
+      version = "~> 3.0.2"
+    }
+  }
+}
 
-3. Define a Docker container resource named "nginx":
-   - Use image "nginx:latest"
-   - Map port 80 in the container to port 8180 on the host:
-     ports {
-       internal = 80
-       external = 8180
-     }
-   - Attach this container to the "app-network" using:
-     networks_advanced {
-       name = docker_network.app_network.name
-     }
-   - Include a depends_on block referencing the Docker network.
+Create a Docker network named app-network.
 
-4. Define a Docker container resource named "flask_app":
-   - Use image "tiangolo/uwsgi-nginx-flask:python3.8"
-   - Mount host path "${abspath(path.module)}/app" to container path "/app":
-     volumes {
-       host_path      = "${abspath(path.module)}/app"
-       container_path = "/app"
-     }
-   - Map port 5000 in the container to port 8100 on the host:
-     ports {
-       internal = 5000
-       external = 8100
-     }
-   - Attach this container to the same "app-network" using:
-     networks_advanced {
-       name = docker_network.app_network.name
-     }
-   - Include a depends_on block referencing the Docker network.
+Define a Docker container named nginx that:
 
-Only output fully working and valid Terraform HCL code — no explanation, no markdown, no YAML. The output must be a single file named main.tf that is ready to run with terraform init and terraform apply.
+    Uses the nginx:latest image
+
+    Connects to the app-network
+
+    Maps container port 80 to host port 8180
+
+    Uses the correct ports block structure:
+
+ports {
+  internal = 80
+  external = 8180
+}
+
+Attaches to the network using the correct networks_advanced block:
+
+    networks_advanced {
+      name = docker_network.app_network.name
+    }
+
+    Uses the correct depends_on syntax (reference the full network resource).
+
+Define a Docker container named flask_app that:
+
+    Uses the tiangolo/uwsgi-nginx-flask:python3.8 image
+
+    Mounts the host folder ${path.module}/app into /app in the container using:
+
+volumes {
+  host_path      = "${abspath(path.module)}/app"
+  container_path = "/app"
+}
+
+
+Maps port 5000 to host port 8100 using:
+
+ports {
+  internal = 5000
+  external = 8100
+}
+
+Attaches to the app-network using the correct networks_advanced block
+
+Includes the proper depends_on syntax
