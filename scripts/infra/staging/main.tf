@@ -1,95 +1,99 @@
-terraform {
-  required_providers {
-    docker = {
-      source  = "kreuzwerker/docker"
-      version = "~> 3.0.2"
-    }
-  }
+# Configure the Docker provider
+provider "docker" {
+  host = "unix:///var/run/docker.sock"
 }
 
-# Create a Docker network named app-network
+# Create a Docker network
 resource "docker_network" "app_network" {
   name = "app-network"
 }
 
-# Define a Docker container named nginx
-resource "docker_container" "nginx" {
-  name  = "nginx"
-  image = "nginx:latest"
-
-  # Connect to the app-network
-  networks_advanced {
-    name = docker_network.app_network.name
+# Define the Flask image
+resource "docker_image" "flask" {
+  name = "myflaskapp"
+  build {
+    context = path.module("./scripts/app", "")
+    dockerfile = "Dockerfile"
   }
-
-  # Map container port 80 to host port 8180
-  ports {
-    internal = 80
-    external = 8180
-  }
-
-  depends_on = [docker_network.app_network]
 }
 
-# Define a Docker container named flask_app
-resource "docker_container" "flask_app" {
-  name  = "flask_app"
-  image = "tiangolo/uwsgi-nginx-flask:python3.8"
-
-  # Mount host folder into container
-  volumes {
-    host_path      = abspath(path.module) + "/app"
-    container_path = "/app"
+# Define the NGINX image
+resource "docker_image" "nginx" {
+  name = "mynginxapp"
+  build {
+    context = path.module("./scripts/nginx", "")
+    dockerfile = "Dockerfile"
   }
+}
 
-  # Map port 5000 to host port 8100
+# Create a Docker container for Flask
+resource "docker_container" "flask" {
+  name = "flask"
+  depends_on = [docker_network.app_network]
+  image = docker_image.flask.name
+  network_mode = docker_network.app_network.name
   ports {
     internal = 5000
     external = 8100
   }
-
-  # Attach to the app-network
-  networks_advanced {
-    name = docker_network.app_network.name
-  }
-
-  depends_on = [docker_network.app_network, docker_container.nginx]
-}
-resources {
-  # Create a Docker image for the flask_app
-  resource "docker_image" "flask_app" {
-    name = "flask_backend"
-    build {
-      context  = "${path.module}/app"
-      dockerfile = "Dockerfile"
-    }
-  }
-
-  # Create a Docker image for the nginx_app
-  resource "docker_image" "nginx_app" {
-    name = "flask_nginx"
-    build {
-      context  = "${path.module}/nginx"
-      dockerfile = "Dockerfile"
-    }
-  }
-
-  # Create Dockers for the apps
-  resource "docker_container" "app" {
-    name  = "flask_app"
-    image = docker_image.flask_app.latest
-    ports {
-      internal = 5000
-      external = 8100
-    }
-  }
-
-  resource "docker_container" "nginx" {
-    name  = "nginx_app"
-    image = docker_image.nginx_app.latest
-    ports {
-      internal = 80
-      external = 8180
-    }
+  volumes {
+    container_path = "/app"
+    host_path      = path.module("./scripts/app", "")
+    read_only      = false
   }
 }
+
+# Create a Docker container for NGINX
+resource "docker_container" "nginx" {
+  name = "nginx"
+  depends_on = [docker_network.app_network]
+  image = docker_image.nginx.name
+  network_mode = docker_network.app_network.name
+  ports {
+    internal = 80
+    external = 8180
+  }
+  depends_on = [docker_container.flask]
+}
+
+# Define the Docker network
+resource "docker_network" "app_network" {
+  name = "app-network"
+}
+from flask import Flask
+
+app = Flask(__name__)
+
+@app.route('/hello', methods=['GET'])
+def hello():
+    return 'Hello from Flask backend!'
+
+if __name__ == '__main__':
+    app.run(debug=True, port=5000)
+flask
+FROM python:3.9-slim
+
+WORKDIR /app
+
+COPY requirements.txt.
+
+RUN pip install -r requirements.txt
+
+COPY app.py.
+
+CMD ["python", "app.py"]
+http {
+    server {
+        listen 80;
+        location / {
+            proxy_pass http://flask:5000;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+        }
+    }
+}
+FROM nginx:1.21.6-alpine
+
+COPY default.conf /etc/nginx/conf.d/
+
+CMD ["nginx", "-g", "daemon off;"]
