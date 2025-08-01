@@ -1,9 +1,16 @@
-Generate a valid Terraform configuration for local development using the Docker provider from kreuzwerker. It should:
-- Use the `kreuzwerker/docker` provider with version ~> 3.0.2
-- Include a required_providers block inside `terraform {}`
-- Include a `provider "docker"` block that uses the local Docker daemon
-- Create an NGINX container listening on port 80
-- Create a Python Flask app container listening on port 5000
-- Use a Docker network so both containers can communicate
-- The configuration must not use any cloud-specific backends like Azure or AWS
-- The code should be complete and compatible with `terraform init` and `terraform apply`
+Generate a complete and valid Terraform configuration using the `kreuzwerker/docker` provider for local development. The configuration must:
+
+- Use `terraform { required_providers { docker = { source = "kreuzwerker/docker", version = "~> 3.0.2" } } }`
+- Use `provider "docker"` with no extra config (connects to local Docker)
+- Define a Docker network named "app-network"
+- Create a container for NGINX:
+  - Use the latest `nginx` image
+  - Attach it to the "app-network"
+  - Map container port 80 to host port **8180**
+- Create a container for a Python Flask app:
+  - Use the `tiangolo/uwsgi-nginx-flask:python3.8` image
+  - Mount a local folder named `./app` into `/app` in the container
+  - Attach it to the same "app-network"
+  - Map container port 5000 to host port **8100**
+
+Do not use any cloud resources. The configuration must be valid for `terraform init` and `terraform apply`.

@@ -11,14 +11,18 @@ mkdir -p "$OUTPUT_DIR"
 
 echo "⚙️  Generating Terraform code using OpenRouter..."
 
+# Safely construct JSON payload with jq
+JSON_PAYLOAD=$(jq -n \
+  --arg model "$MODEL" \
+  --arg content "$PROMPT" \
+  '{model: $model, messages: [{role: "user", content: $content}]}')
+
 RESPONSE=$(curl -s https://openrouter.ai/api/v1/chat/completions \
   -H "Authorization: Bearer $API_KEY" \
   -H "Content-Type: application/json" \
-  -d '{
-    "model": "'"$MODEL"'",
-    "messages": [{"role": "user", "content": "'"$PROMPT"'"}]
-  }')
+  -d "$JSON_PAYLOAD")
 
+# Extract content
 CONTENT=$(echo "$RESPONSE" | jq -r '.choices[0].message.content // empty')
 
 # Try to extract inside ``` blocks if they exist
