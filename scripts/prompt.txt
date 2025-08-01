@@ -1,7 +1,6 @@
-Generate a complete Terraform configuration using the kreuzwerker/docker provider to deploy a Flask backend and an Nginx frontend reverse proxy using Docker containers.
+Generate a valid Terraform configuration using the kreuzwerker/docker provider. The configuration should:
 
-The configuration should include:
-📦 Provider Block:
+    Initialize the docker provider using:
 
 terraform {
   required_providers {
@@ -12,33 +11,50 @@ terraform {
   }
 }
 
-provider "docker" {}
+Create a Docker network named app-network.
 
-🧠 Docker Network:
+Define a Docker container named nginx that:
 
-    Create a Docker network named app-network.
+    Uses the nginx:latest image
 
-resource "docker_network" "app_network" {
-  name = "app-network"
+    Connects to the app-network
+
+    Maps container port 80 to host port 8180
+
+    Uses the correct ports block structure:
+
+ports {
+  internal = 80
+  external = 8180
 }
 
-🐍 Flask Container:
+Attaches to the network using the correct networks_advanced block:
 
-    Use image tiangolo/uwsgi-nginx-flask:python3.8
+    networks_advanced {
+      name = docker_network.app_network.name
+    }
 
-    Mount host folder ${path.module}/scripts/app to /app in the container:
+    Uses the correct depends_on syntax (reference the full network resource).
+
+Define a Docker container named flask_app that:
+
+    Uses the tiangolo/uwsgi-nginx-flask:python3.8 image
+
+    Mounts the host folder ${path.module}/app into /app in the container using:
 
 volumes {
-  host_path      = "${abspath(path.module)}/scripts/app"
+  host_path      = "${abspath(path.module)}/app"
   container_path = "/app"
 }
 
-    Map container port 5000 to host port 8100
 
-    Attach to the app-network using:
+Maps port 5000 to host port 8100 using:
 
-networks_advanced {
-  name = docker_network.app_network.name
+ports {
+  internal = 5000
+  external = 8100
 }
 
-    Use correct depends_on syntax referencing the full network resource.
+Attaches to the app-network using the correct networks_advanced block
+
+Includes the proper depends_on syntax
