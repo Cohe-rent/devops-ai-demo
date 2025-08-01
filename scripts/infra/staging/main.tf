@@ -7,6 +7,8 @@ terraform {
   }
 }
 
+provider "docker" {}
+
 resource "docker_network" "app_network" {
   name = "app-network"
 }
@@ -45,5 +47,8 @@ resource "docker_container" "flask_container" {
     name = docker_network.app_network.name
   }
 
-  depends_on = [docker_container.nginx_container, docker_network.app_network]
+  depends_on = [
+    docker_network.app_network,
+    docker_container.nginx_container
+  ]
 }
